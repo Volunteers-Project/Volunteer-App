@@ -16,7 +16,7 @@ export default function HomePage() {
         </p>
 
         <button
-          onClick={() => router.push("/register")}
+          onClick={() => router.push("/auth")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all"
         >
           Go to Register
