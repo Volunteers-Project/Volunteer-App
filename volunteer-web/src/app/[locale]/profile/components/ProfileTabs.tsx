@@ -4,10 +4,18 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { User } from '@supabase/supabase-js';
 
-// Lazy load each tab for performance
-const FullProfileTab = dynamic(() => import('../tabs/FullProfileTab'));
-const VolunteerHistoryTab = dynamic(() => import('../tabs/VolunteerHistoryTab'));
-const StoredContactsTab = dynamic(() => import('../tabs/StoredContactsTab'));
+// ✅ Explicitly type each dynamic import with its props
+const FullProfileTab = dynamic<{ user: User }>(
+  () => import('../tabs/FullProfileTab')
+);
+
+const VolunteerHistoryTab = dynamic<{ user: User }>(
+  () => import('../tabs/VolunteerHistoryTab')
+);
+
+const StoredContactsTab = dynamic<{ user: User }>(
+  () => import('../tabs/StoredContactsTab')
+);
 
 type TabKey = 'profile' | 'history' | 'contacts';
 
