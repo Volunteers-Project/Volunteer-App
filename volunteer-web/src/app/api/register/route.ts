@@ -28,8 +28,7 @@ export async function POST(req: Request) {
         data: {
           id: data.user.id, // use Supabase's UUID
           email,
-          name: username,
-          password: "", // don’t store raw password here
+          username: username
         },
       })
     }
