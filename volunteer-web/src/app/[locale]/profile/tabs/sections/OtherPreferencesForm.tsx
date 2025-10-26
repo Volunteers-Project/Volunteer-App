@@ -5,8 +5,12 @@ import { VolunteerProfile, ScaleMap, DayMap, WorkTypeMap } from '../types';
 
 interface Props {
   profile: VolunteerProfile;
-  onChange: (field: keyof VolunteerProfile, value: any) => void;
+  onChange: (
+    field: keyof VolunteerProfile,
+    value: string | number | boolean | string[] | Record<string, unknown> | null
+  ) => void;
 }
+
 
 interface TimeSlot {
   day: string;

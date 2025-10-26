@@ -106,20 +106,26 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
         where: { volunteerProfileId: profile.id },
       });
 
-      const validSchedules = schedules
+      interface ScheduleInput {
+        dayCode: number;
+        startTime: string;
+        endTime: string;
+      }
+
+      const validSchedules = (schedules as ScheduleInput[])
         .filter(
-          (s: any) =>
-            s.dayCode &&
+          (s) =>
+            typeof s.dayCode === 'number' &&
             s.startTime &&
-            s.endTime &&
-            typeof s.dayCode === 'number'
+            s.endTime
         )
-        .map((s: any) => ({
+        .map((s) => ({
           volunteerProfileId: profile.id,
           dayCode: s.dayCode,
           startTime: s.startTime,
           endTime: s.endTime,
         }));
+
 
       if (validSchedules.length > 0)
         await prisma.volunteerSchedule.createMany({ data: validSchedules });
