@@ -25,9 +25,13 @@ export default function FullProfileTab({ user }: Props) {
     loadProfile();
   }, [user.id]);
 
-  const handleChange = (field: keyof VolunteerProfile, value: string) => {
+  const handleChange = (
+    field: keyof VolunteerProfile,
+    value: string | number | boolean | string[] | Record<string, unknown> | null
+  ) => {
     setProfile((prev) => (prev ? { ...prev, [field]: value } : { [field]: value }));
   };
+
 
   const handleSave = async () => {
     if (!profile) return;
