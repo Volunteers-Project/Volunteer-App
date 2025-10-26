@@ -1,14 +1,26 @@
-// src/app/api/user/[uuid]/roles/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET(_: Request, { params }: { params: { uuid: string } }) {
-  const roles = await prisma.userRole.findMany({
-    where: { user_uuid: params.uuid },
-    include: { role: true },
-  });
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ uuid: string }> }
+) {
+  const { uuid } = await context.params; // ✅ await the Promise
 
-  return NextResponse.json(roles.map((r) => ({ name: r.role.name })));
+  try {
+    const roles = await prisma.userRole.findMany({
+      where: { user_uuid: uuid },
+      include: { role: true },
+    });
+
+    return NextResponse.json(roles.map((r) => ({ name: r.role.name })));
+  } catch (err) {
+    console.error('Error fetching roles:', err);
+    return NextResponse.json(
+      { error: 'Failed to fetch roles' },
+      { status: 500 }
+    );
+  }
 }
