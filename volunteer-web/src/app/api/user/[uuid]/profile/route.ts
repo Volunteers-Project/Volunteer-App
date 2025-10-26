@@ -1,29 +1,44 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET(_: Request, { params }: { params: { uuid: string } }) {
+// 🧩 GET handler
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ uuid: string }> }
+) {
+  const { uuid } = await context.params;
+
   try {
     const profile = await prisma.volunteerProfile.findFirst({
-      where: { userId: params.uuid },
+      where: { userId: uuid },
       include: {
         locations: true,
-        schedules: true, // ✅ Include new relation
+        schedules: true, // only if you have VolunteerSchedule relation
       },
     });
 
-    // Return empty object if no profile exists
     return NextResponse.json(profile || {});
   } catch (err) {
     console.error('Error fetching profile:', err);
-    return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to load profile' },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(req: Request, { params }: { params: { uuid: string } }) {
+// 🧩 POST handler
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ uuid: string }> }
+) {
+  const { uuid } = await context.params;
+
   try {
     const body = await req.json();
+
     const {
       name,
       genderCode,
@@ -37,15 +52,14 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
       email,
       volunteerScaleCode,
       preferredWorks,
+      profilePrivate,
+      receiveNotifications,
       locations,
       schedules,
-      isPrivate, // ✅ renamed from profilePrivate
-      receiveNotifications,
     } = body;
 
-    // 🧩 Upsert main profile
     const profile = await prisma.volunteerProfile.upsert({
-      where: { userId: params.uuid },
+      where: { userId: uuid },
       update: {
         name,
         genderCode,
@@ -59,11 +73,11 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
         email,
         volunteerScaleCode,
         preferredWorks,
-        isPrivate,
+        profilePrivate,
         receiveNotifications,
       },
       create: {
-        userId: params.uuid,
+        userId: uuid,
         name,
         genderCode,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
@@ -76,22 +90,19 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
         email,
         volunteerScaleCode,
         preferredWorks,
-        isPrivate,
+        profilePrivate,
         receiveNotifications,
       },
-      include: { locations: true, schedules: true },
+      include: { locations: true },
     });
 
-    // 🗺️ Update locations
+    // Optional: handle locations
     if (Array.isArray(locations)) {
-      await prisma.volunteerLocation.deleteMany({
-        where: { userId: params.uuid },
-      });
-
+      await prisma.volunteerLocation.deleteMany({ where: { userId: uuid } });
       if (locations.length > 0) {
         await prisma.volunteerLocation.createMany({
           data: locations.map((loc: { region: string; area: string }) => ({
-            userId: params.uuid,
+            userId: uuid,
             region: loc.region,
             area: loc.area,
             volunteerProfileId: profile.id,
@@ -100,24 +111,18 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
       }
     }
 
-    // 🕒 Update schedules
+    // Optional: handle schedules
     if (Array.isArray(schedules)) {
       await prisma.volunteerSchedule.deleteMany({
         where: { volunteerProfileId: profile.id },
       });
-
-      interface ScheduleInput {
-        dayCode: number;
-        startTime: string;
-        endTime: string;
-      }
-
-      const validSchedules = (schedules as ScheduleInput[])
+      const validSchedules = schedules
         .filter(
-          (s) =>
-            typeof s.dayCode === 'number' &&
-            s.startTime &&
-            s.endTime
+          (s: {
+            dayCode: number;
+            startTime: string;
+            endTime: string;
+          }) => s.dayCode && s.startTime && s.endTime
         )
         .map((s) => ({
           volunteerProfileId: profile.id,
@@ -125,8 +130,6 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
           startTime: s.startTime,
           endTime: s.endTime,
         }));
-
-
       if (validSchedules.length > 0)
         await prisma.volunteerSchedule.createMany({ data: validSchedules });
     }
@@ -134,6 +137,9 @@ export async function POST(req: Request, { params }: { params: { uuid: string } 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Error saving profile:', err);
-    return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to save profile' },
+      { status: 500 }
+    );
   }
 }
