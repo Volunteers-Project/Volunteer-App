@@ -4,8 +4,7 @@ import { User } from '@supabase/supabase-js';
 import BasicInformationForm from './sections/BasicInformationForm';
 import ContactInformationForm from './sections/ContactInformationForm';
 import OtherPreferencesForm from './sections/OtherPreferencesForm';
-import { VolunteerProfile } from './types';
-
+import { VolunteerProfile,ChangeValue } from './types';
 interface Props {
   user: User;
 }
@@ -25,12 +24,12 @@ export default function FullProfileTab({ user }: Props) {
     loadProfile();
   }, [user.id]);
 
-  const handleChange = (
-    field: keyof VolunteerProfile,
-    value: string | number | boolean | string[] | Record<string, unknown> | null
-  ) => {
+ // ✅ make sure to export ChangeValue in types.ts
+
+  const handleChange = (field: keyof VolunteerProfile, value: ChangeValue) => {
     setProfile((prev) => (prev ? { ...prev, [field]: value } : { [field]: value }));
   };
+
 
 
   const handleSave = async () => {

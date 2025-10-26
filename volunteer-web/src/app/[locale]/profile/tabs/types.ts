@@ -1,4 +1,15 @@
+export type ChangeValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | number[]
+  | Record<string, unknown>
+  | VolunteerSchedule[]
+  | VolunteerLocation[]
+  | null;
 
+  
 // ENUM LABELS
 export const GenderMap: Record<number, string> = {
   1: 'Male',

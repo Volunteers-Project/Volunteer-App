@@ -1,15 +1,24 @@
 'use client';
 import { useState } from 'react';
-import { VolunteerProfile, ScaleMap, DayMap, WorkTypeMap } from '../types';
+import { VolunteerProfile, ScaleMap, DayMap, WorkTypeMap,VolunteerSchedule, VolunteerLocation } from '../types';
 
+
+type ChangeValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | number[]
+  | Record<string, unknown>
+  | VolunteerSchedule[]
+  | VolunteerLocation[]
+  | null;
 
 interface Props {
   profile: VolunteerProfile;
-  onChange: (
-    field: keyof VolunteerProfile,
-    value: string | number | boolean | string[] | Record<string, unknown> | null
-  ) => void;
+  onChange: (field: keyof VolunteerProfile, value: ChangeValue) => void;
 }
+
 
 
 interface TimeSlot {
