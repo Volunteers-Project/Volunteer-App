@@ -7,12 +7,111 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+////////////////////////////////////////////////////
+// USER TABLE (Synced with Supabase Auth)
+////////////////////////////////////////////////////
+
 model User {
   id        String   @id @default(uuid()) @db.Uuid
-  name      String?
+  username  String?
   email     String   @unique
-  password  String   // store hashed password
-  role      String   @default("volunteer") // later: "admin", "org_admin"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relations
+  roles              UserRole[]
+  volunteerProfile   VolunteerProfile?
+  volunteerLocations VolunteerLocation[]
+}
+
+/////////////////////////////////////////
+// ROLE TABLE (Role definitions)
+/////////////////////////////////////////
+
+model Role {
+  id    Int        @id @default(autoincrement())
+  name  String     @unique
+  users UserRole[]
+}
+
+////////////////////////////////////////////////////
+// USER_ROLE TABLE (Links users ↔ roles)
+////////////////////////////////////////////////////
+
+model UserRole {
+  id         Int      @id @default(autoincrement())
+  user_uuid  String   @db.Uuid
+  role_id    Int
+  created_at DateTime @default(now())
+
+  // Relations
+  role Role @relation(fields: [role_id], references: [id])
+  user User @relation(fields: [user_uuid], references: [id])
+
+  @@unique([user_uuid, role_id])
+}
+
+////////////////////////////////////////////////////
+// VOLUNTEER PROFILE (Main info per user)
+////////////////////////////////////////////////////
+
+model VolunteerProfile {
+  id                   String              @id @default(uuid()) @db.Uuid
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String              @unique @db.Uuid
+  name                 String?
+  genderCode           Int?
+  dateOfBirth          DateTime?
+  statusCode           Int?                @default(1)
+  phone                String?
+  workPhone            String?
+  lineId               String?
+  whatsapp             String?
+  wechat               String?
+  email                String?
+  preferredWorks       Int[]               @default([])
+  volunteerScaleCode   Int?
+  profileImagePath     String?
+  profilePrivate       Boolean             @default(false)
+  receiveNotifications Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  // Relations
+  locations VolunteerLocation[]
+  schedules VolunteerSchedule[]            // 👈 New relation
+}
+
+model VolunteerSchedule {
+  id                 String            @id @default(uuid()) @db.Uuid
+  volunteerProfile   VolunteerProfile  @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+  volunteerProfileId String            @db.Uuid
+
+  // 🗓 Store day & time in normalized columns
+  dayCode            Int               // 1=Monday, 2=Tuesday, etc.
+  startTime          String            // "08:00"
+  endTime            String            // "12:00"
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+
+
+
+////////////////////////////////////////////////////
+// VOLUNTEER LOCATION (1 user → many locations)
+////////////////////////////////////////////////////
+
+model VolunteerLocation {
+  id                 String            @id @default(uuid()) @db.Uuid
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String            @db.Uuid
+  region             String
+  area               String
+  createdAt          DateTime          @default(now())
+  VolunteerProfile   VolunteerProfile? @relation(fields: [volunteerProfileId], references: [id])
+  volunteerProfileId String?           @db.Uuid
+
+  @@unique([userId, region, area])
 }
