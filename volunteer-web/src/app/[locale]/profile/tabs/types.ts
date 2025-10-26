@@ -74,7 +74,7 @@ export interface VolunteerProfile {
 
   // 🧩 New fields
   preferredWorks?: number[];  // formerly string[], now int[]
-  isPrivate?: boolean;        // renamed from profilePrivate
+  profilePrivate?: boolean;        // renamed from profilePrivate
   receiveNotifications?: boolean;
 
   // ⛓ Relations

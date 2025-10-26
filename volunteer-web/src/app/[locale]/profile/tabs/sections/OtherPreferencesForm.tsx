@@ -35,29 +35,6 @@ export default function OtherPreferencesForm({ profile, onChange }: Props) {
     area: '',
   });
 
-  // Helper arrays for dropdowns
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-  const addTimeSlot = () => {
-    if (!newTime.day || !newTime.start || !newTime.end) return;
-    const schedule = profile.preferredSchedule || {};
-    const updated = {
-      ...schedule,
-      [newTime.day]: [
-        ...(schedule[newTime.day as keyof typeof schedule] || []),
-        `${newTime.start}-${newTime.end}`,
-      ],
-    };
-    onChange('preferredSchedule', updated);
-    setNewTime({ day: '', start: '', end: '' });
-  };
-
-  const removeTimeSlot = (day: string, slot: string) => {
-    const updated = { ...(profile.preferredSchedule || {}) };
-    updated[day] = updated[day].filter((s: string) => s !== slot);
-    if (updated[day].length === 0) delete updated[day];
-    onChange('preferredSchedule', updated);
-  };
 
   const addLocation = () => {
     if (!newLocation.region || !newLocation.area) return;
