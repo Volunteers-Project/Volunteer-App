@@ -20,27 +20,46 @@ export default function ResetPasswordPage() {
 
   // Step 1: verify session when user opens the link
   useEffect(() => {
-    async function verifyResetLink() {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error(error);
+    async function handleRecoverySession() {
+      const hash = window.location.hash;
+
+      if (!hash) {
         setStatus('error');
-        setMessage('Invalid or expired reset link.');
+        setMessage('Invalid reset link.');
         return;
       }
 
-      // Supabase automatically sets session from URL hash (#access_token=…)
-      // So if there's a session, we can proceed.
-      if (data?.session) {
-        setStatus('verified');
-      } else {
+      // Extract access_token from URL fragment (#access_token=...)
+      const queryString = hash.replace('#', '?');
+      const urlParams = new URLSearchParams(queryString);
+      const access_token = urlParams.get('access_token');
+      const refresh_token = urlParams.get('refresh_token');
+
+      if (!access_token || !refresh_token) {
         setStatus('error');
-        setMessage('Invalid or expired reset link.');
+        setMessage('Reset link missing token.');
+        return;
       }
+
+      // Create a session using the tokens
+      const { data, error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (error) {
+        console.error(error);
+        setStatus('error');
+        setMessage('Invalid or expired link.');
+        return;
+      }
+
+      setStatus('verified');
     }
 
-    verifyResetLink();
+    handleRecoverySession();
   }, []);
+
 
   // Step 2: handle password update
   async function handleReset(e: React.FormEvent) {

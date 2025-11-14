@@ -39,17 +39,27 @@ model Role {
 ////////////////////////////////////////////////////
 
 model UserRole {
-  id         Int      @id @default(autoincrement())
-  user_uuid  String   @db.Uuid
-  role_id    Int
-  created_at DateTime @default(now())
+  id               Int       @id @default(autoincrement())
+  user_uuid        String
+  role_id          Int
+  status           Int      @default(1) // 1=pending,2=active,3=rejected,4=expired,5=renewable
+  request_message  String? 
+  attachment_path  String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
 
-  // Relations
-  role Role @relation(fields: [role_id], references: [id])
-  user User @relation(fields: [user_uuid], references: [id])
+  active_until     DateTime? // when the role automatically expires
+  downtime_until   DateTime? // when user can reapply after rejection/expiration
+  rejection_reason String?   // why it was rejected
 
-  @@unique([user_uuid, role_id])
+  user             User      @relation(fields: [user_uuid], references: [id])
+  role             Role      @relation(fields: [role_id], references: [id])
+
+  @@unique([user_uuid, role_id], name: "user_uuid_role_id")
 }
+
+
+
 
 ////////////////////////////////////////////////////
 // VOLUNTEER PROFILE (Main info per user)

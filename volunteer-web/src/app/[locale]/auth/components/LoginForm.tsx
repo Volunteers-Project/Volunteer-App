@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
-// Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -12,17 +11,18 @@ const supabase = createClient(
 
 export default function LoginForm() {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = pathname.split('/')[1] || 'en';
+
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
 
-  // Handle input change
   function handleChange(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // Handle login
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -41,7 +41,16 @@ export default function LoginForm() {
         return;
       }
 
-      router.push('/');
+      // ⭐ After login, fetch user info
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (user) {
+        // ⭐ Store user_id in a cookie (valid for 7 days)
+        document.cookie = `user_id=${user.id}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+      }
+
+      router.push(`/${currentLocale}`);
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -51,7 +60,7 @@ export default function LoginForm() {
     }
   }
 
-  // ✅ Handle "Forgot Password"
+
   async function handleForgotPassword() {
     setError(null);
     setResetMessage(null);
@@ -62,11 +71,14 @@ export default function LoginForm() {
     }
 
     try {
+      const redirectURL = `${window.location.origin}/${currentLocale}/reset-password`;
+      // console.log(redirectURL);
       const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectURL,
       });
 
       if (error) {
+        console.error(error);
         setError('⚠️ Failed to send reset link. Try again later.');
       } else {
         setResetMessage('📩 Password reset link sent! Check your email.');
@@ -105,7 +117,6 @@ export default function LoginForm() {
         />
       </div>
 
-      {/* Forgot password link */}
       <div className="text-right">
         <button
           type="button"
@@ -116,11 +127,9 @@ export default function LoginForm() {
         </button>
       </div>
 
-      {/* Feedback messages */}
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
       {resetMessage && <p className="text-green-600 text-sm text-center">{resetMessage}</p>}
 
-      {/* Login button */}
       <div className="w-2/3 mx-auto">
         <button
           type="submit"

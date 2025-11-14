@@ -95,3 +95,32 @@ export interface VolunteerProfile {
   createdAt?: string;
   updatedAt?: string;
 }
+
+
+export type RoleStatusCode =
+  | 0 // never had
+  | 1 // pending
+  | 2 // active
+  | 3 // rejected
+  | 4 // expired
+  | 5 // renewable
+  | 9; // unknown
+
+export interface RoleDetails {
+  active_until?: string | null;
+  created_at?: string | null;
+  expiry_date?: string | null;
+  downtime_until?: string | null;
+  rejection_reason?: string | null;
+}
+
+export interface RoleWithStatus {
+  id: number;
+  name: string;
+  description?: string | null;
+
+  userStatus: RoleStatusCode;
+  details: RoleDetails | null;
+  canApply: boolean;
+}
+
