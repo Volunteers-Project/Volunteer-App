@@ -9,18 +9,28 @@ export async function GET(req: Request) {
 
   try {
     const allRoles = await prisma.role.findMany({
-      select: { id: true, name: true},
+      select: { id: true, name: true },
     });
 
     if (!user_uuid) return NextResponse.json(allRoles);
 
-    // Get roles that the user already holds or is cooling down
+    // Get roles the user cannot apply for
     const blocked = await prisma.userRole.findMany({
       where: {
         user_uuid,
         OR: [
-          { status: 'active', active_until: { gt: new Date() } },
-          { downtime_until: { gt: new Date() } },
+          {
+            status: 2, // ACTIVE
+            active_until: { gt: new Date() },
+          },
+          {
+            status: 3, // REJECTED but with downtime
+            downtime_until: { gt: new Date() },
+          },
+          {
+            status: 5, // RENEWABLE (still can't apply again)
+            active_until: { gt: new Date() },
+          },
         ],
       },
       select: { role_id: true },
