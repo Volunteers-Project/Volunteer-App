@@ -10,7 +10,7 @@ export async function GET(
   const { uuid } = await context.params; // ✅ await the Promise
 
   try {
-    const roles = await prisma.UserRole.findMany({
+    const roles = await prisma.userRole.findMany({
       where: { user_uuid: uuid },
       include: { role: true },
     });
