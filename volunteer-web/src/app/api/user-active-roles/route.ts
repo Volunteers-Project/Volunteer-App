@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       user_uuid,
       status: { in: [2, 5] }, // 2=active, 5=renewable
     },
-    include: { role: true },
+    include: { role: true }, 
   });
 
   return NextResponse.json(roles.map(r => ({
