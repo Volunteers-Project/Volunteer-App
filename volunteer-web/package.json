@@ -13,7 +13,6 @@
     "@prisma/client": "^6.16.3",
     "@supabase/supabase-js": "^2.81.1",
     "@types/pdfjs-dist": "^2.10.377",
-    "canvas": "^3.2.0",
     "canvas-to-blob": "^1.0.0",
     "docx-preview": "^0.3.7",
     "jsdom": "^27.2.0",
