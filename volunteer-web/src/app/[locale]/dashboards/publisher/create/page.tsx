@@ -7,22 +7,11 @@ export default function CreateNews() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
 
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [title, setTitle] = useState("");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-
-  useEffect(() => {
-    async function loadCategories() {
-      const r = await fetch("/api/news/categories");
-      const json = await r.json();
-      setCategories(json);
-    }
-    loadCategories();
-  }, []);
 
   async function handleSubmit() {
     if (!title || !file || !thumbnail) {
@@ -32,10 +21,6 @@ export default function CreateNews() {
 
     const formData = new FormData();
     formData.append("title", title);
-
-    // still append categoryId (for future use)
-    if (categoryId) formData.append("categoryId", String(categoryId));
-    
     formData.append("tags", JSON.stringify(tags));
     formData.append("thumbnail", thumbnail);
     formData.append("file", file);
@@ -152,21 +137,6 @@ export default function CreateNews() {
             </span>
           ))}
         </div>
-      </div>
-
-      {/* CATEGORY HIDDEN FOR NOW */}
-      <div className="hidden">
-        <label className="font-medium text-gray-700">Category</label>
-        <select
-          className="border border-gray-300 p-3 rounded-lg w-full mt-2"
-          value={categoryId || ""}
-          onChange={(e) => setCategoryId(Number(e.target.value))}
-        >
-          <option value="">Select category</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
       </div>
 
       {/* Submit */}
