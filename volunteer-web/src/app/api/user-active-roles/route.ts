@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { cookies } from "next/headers";
 
 const prisma = new PrismaClient();
 
 // Returns only ACTIVE or RENEWABLE roles
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const user_uuid = searchParams.get("user_uuid");
+  const cookieStore = await cookies();
+  const user_uuid = cookieStore.get("user_id")?.value;
 
   if (!user_uuid) {
     return NextResponse.json({ error: "Missing user_uuid" }, { status: 400 });

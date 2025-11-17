@@ -37,7 +37,13 @@ export default async function LocaleLayout({
           <Navbar />
           <main className="min-h-screen">{children}</main>
         </NextIntlClientProvider>
+        <script
+          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`}
+          async
+        ></script>
       </body>
     </html>
+    
   );
 }
+

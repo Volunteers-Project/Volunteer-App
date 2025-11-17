@@ -1,3 +1,7 @@
+////////////////////////////////////////////////////
+// PRISMA CLIENT + DATABASE
+////////////////////////////////////////////////////
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +12,7 @@ datasource db {
 }
 
 ////////////////////////////////////////////////////
-// USER TABLE (Synced with Supabase Auth)
+// USER TABLE (Supabase Auth Mirror)
 ////////////////////////////////////////////////////
 
 model User {
@@ -19,14 +23,18 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  roles              UserRole[]
-  volunteerProfile   VolunteerProfile?
-  volunteerLocations VolunteerLocation[]
+  roles                UserRole[]
+  volunteerProfile     VolunteerProfile?
+  volunteerLocations   VolunteerLocation[]
+
+  news                 News[]
+  activitiesCreated    Activity[]          @relation("ActivityOrganizer")
+  activityParticipants ActivityParticipant[]
 }
 
-/////////////////////////////////////////
-// ROLE TABLE (Role definitions)
-/////////////////////////////////////////
+////////////////////////////////////////////////////
+// ROLE TABLE
+////////////////////////////////////////////////////
 
 model Role {
   id    Int        @id @default(autoincrement())
@@ -35,22 +43,22 @@ model Role {
 }
 
 ////////////////////////////////////////////////////
-// USER_ROLE TABLE (Links users ↔ roles)
+// USER ↔ ROLE LINK TABLE
 ////////////////////////////////////////////////////
 
 model UserRole {
   id               Int       @id @default(autoincrement())
   user_uuid        String
   role_id          Int
-  status           Int      @default(1) // 1=pending,2=active,3=rejected,4=expired,5=renewable
-  request_message  String? 
+  status           Int       @default(1)
+  request_message  String?
   attachment_path  String?
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
 
-  active_until     DateTime? // when the role automatically expires
-  downtime_until   DateTime? // when user can reapply after rejection/expiration
-  rejection_reason String?   // why it was rejected
+  active_until     DateTime?
+  downtime_until   DateTime?
+  rejection_reason String?
 
   user             User      @relation(fields: [user_uuid], references: [id])
   role             Role      @relation(fields: [role_id], references: [id])
@@ -58,17 +66,15 @@ model UserRole {
   @@unique([user_uuid, role_id], name: "user_uuid_role_id")
 }
 
-
-
-
 ////////////////////////////////////////////////////
-// VOLUNTEER PROFILE (Main info per user)
+// VOLUNTEER PROFILE
 ////////////////////////////////////////////////////
 
 model VolunteerProfile {
   id                   String              @id @default(uuid()) @db.Uuid
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId               String              @unique @db.Uuid
+
   name                 String?
   genderCode           Int?
   dateOfBirth          DateTime?
@@ -79,49 +85,249 @@ model VolunteerProfile {
   whatsapp             String?
   wechat               String?
   email                String?
+
   preferredWorks       Int[]               @default([])
   volunteerScaleCode   Int?
   profileImagePath     String?
   profilePrivate       Boolean             @default(false)
   receiveNotifications Boolean             @default(true)
+
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
   // Relations
   locations VolunteerLocation[]
-  schedules VolunteerSchedule[]            // 👈 New relation
+  schedules VolunteerSchedule[]
 }
+
+////////////////////////////////////////////////////
+// VOLUNTEER SCHEDULE (Availability)
+////////////////////////////////////////////////////
 
 model VolunteerSchedule {
   id                 String            @id @default(uuid()) @db.Uuid
   volunteerProfile   VolunteerProfile  @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
   volunteerProfileId String            @db.Uuid
 
-  // 🗓 Store day & time in normalized columns
-  dayCode            Int               // 1=Monday, 2=Tuesday, etc.
-  startTime          String            // "08:00"
-  endTime            String            // "12:00"
+  dayCode            Int
+  startTime          String
+  endTime            String
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 }
 
-
-
-
 ////////////////////////////////////////////////////
-// VOLUNTEER LOCATION (1 user → many locations)
+// VOLUNTEER LOCATION
 ////////////////////////////////////////////////////
 
 model VolunteerLocation {
   id                 String            @id @default(uuid()) @db.Uuid
   user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId             String            @db.Uuid
+
   region             String
   area               String
+
   createdAt          DateTime          @default(now())
+
   VolunteerProfile   VolunteerProfile? @relation(fields: [volunteerProfileId], references: [id])
   volunteerProfileId String?           @db.Uuid
 
   @@unique([userId, region, area])
+}
+
+////////////////////////////////////////////////////
+// NEWS CATEGORIES
+////////////////////////////////////////////////////
+
+model NewsCategory {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  news  News[]
+}
+
+////////////////////////////////////////////////////
+// NEWS
+////////////////////////////////////////////////////
+
+model News {
+  id          Int       @id @default(autoincrement())
+  title       String
+  thumbnail   String
+  fileUrl     String
+  tags        String[]
+  previewUrl  String?
+  categoryId  Int
+  authorId    String     @db.Uuid
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  category    NewsCategory @relation(fields: [categoryId], references: [id])
+  author      User         @relation(fields: [authorId], references: [id])
+
+  activities  Activity[]
+}
+
+////////////////////////////////////////////////////
+// ENUMS
+////////////////////////////////////////////////////
+
+enum ActivityStatus {
+  OPEN
+  CLOSED
+  COMPLETED
+}
+
+enum CurrencyCode {
+  NTD
+  IDR
+  USD
+  OTHER
+}
+
+////////////////////////////////////////////////////
+// ACTIVITY
+////////////////////////////////////////////////////
+
+model Activity {
+  id                String         @id @default(uuid()) @db.Uuid
+  newsId            Int?
+  title             String
+  description       String
+
+  meetingLocation   String
+  meetingLat        Float?
+  meetingLng        Float?
+  meetingFormatted  String?
+
+  volunteerLocation String
+  volunteerLat      Float?
+  volunteerLng      Float?
+  volunteerFormatted String?
+
+  maxParticipants   Int
+  minParticipants   Int @default(1)
+  workTypes         Int[] @default([])
+
+  createdBy         String         @db.Uuid
+  createdAt         DateTime       @default(now())
+  status            ActivityStatus @default(OPEN)
+
+  organizer         User           @relation("ActivityOrganizer", fields: [createdBy], references: [id])
+  news              News?          @relation(fields: [newsId], references: [id])
+  timeSlots         ActivityTimeSlot[]
+  transport         ActivityTransport?
+  meal              ActivityMeal?
+  participants      ActivityParticipant[]
+}
+
+////////////////////////////////////////////////////
+// TIME SLOT
+////////////////////////////////////////////////////
+
+model ActivityTimeSlot {
+  id         String                  @id @default(uuid()) @db.Uuid
+  activity   Activity                @relation(fields: [activityId], references: [id])
+  activityId String                  @db.Uuid
+
+  dayCode    Int
+  date       String
+  startTime  String
+  endTime    String
+
+  slots      ActivityParticipantSlot[]
+}
+
+////////////////////////////////////////////////////
+// TRANSPORT
+////////////////////////////////////////////////////
+
+model ActivityTransport {
+  id          String    @id @default(uuid()) @db.Uuid
+  activity    Activity  @relation(fields: [activityId], references: [id])
+  activityId  String    @unique @db.Uuid
+
+  provided    Boolean
+  isPaid      Boolean
+  fee         Int?
+  currency    CurrencyCode?
+}
+
+////////////////////////////////////////////////////
+// MEAL
+////////////////////////////////////////////////////
+
+model ActivityMeal {
+  id          String    @id @default(uuid()) @db.Uuid
+  activity    Activity  @relation(fields: [activityId], references: [id])
+  activityId  String    @unique @db.Uuid
+
+  provided    Boolean
+  isPaid      Boolean
+  fee         Int?
+  currency    CurrencyCode?
+}
+
+////////////////////////////////////////////////////
+// PARTICIPANTS
+////////////////////////////////////////////////////
+
+enum ParticipantStatus {
+  REGISTERED
+  ATTENDED
+  SICK_LEAVE
+  ABSENT
+  LEFT_EARLY
+}
+
+model ActivityParticipant {
+  id          String               @id @default(uuid()) @db.Uuid
+
+  user        User                 @relation(fields: [userId], references: [id])
+  userId      String               @db.Uuid
+
+  activity    Activity             @relation(fields: [activityId], references: [id])
+  activityId  String               @db.Uuid
+
+  slots       ActivityParticipantSlot[]
+
+  statusCode  Int @default(1)
+  arrivalTime DateTime?
+  leaveTime   DateTime?
+
+  joinedAt    DateTime @default(now())
+  attended    Boolean  @default(false)
+
+  @@unique([userId, activityId], name: "userId_activityId")
+}
+
+////////////////////////////////////////////////////
+// PARTICIPANT ↔ TIME SLOT
+////////////////////////////////////////////////////
+
+model ActivityParticipantSlot {
+  id              String               @id @default(uuid()) @db.Uuid
+
+  participant     ActivityParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participantId   String               @db.Uuid
+
+  timeSlot        ActivityTimeSlot     @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+  timeSlotId      String               @db.Uuid
+
+  createdAt       DateTime             @default(now())
+
+  mealWanted      Boolean?
+  mealReason      String?
+
+  transportWanted Boolean?
+  transportReason String?
+
+  arrivalTime     DateTime?
+  leaveTime       DateTime?
+  statusCode      Int?
+
+  @@unique([participantId, timeSlotId])
 }

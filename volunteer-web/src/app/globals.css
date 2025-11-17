@@ -24,3 +24,62 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Elegant thin scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thumb-gray-400::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 10px;
+}
+
+.scrollbar-track-gray-200::-webkit-scrollbar-track {
+  background-color: #e5e7eb;
+}
+
+/* ---- PILL INPUT STYLE ---- */
+.input-pill {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-full bg-white transition-all duration-300;
+}
+
+.input-pill:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.3),
+    0 0 12px rgba(59, 130, 246, 0.4);
+  transform: scale(1.01);
+}
+
+/* ---- GLOW ANIMATION ---- */
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.input-pill.glow {
+  animation: glowPulse 1.5s ease-in-out infinite;
+}
+
+/* ---- Pill radio container ---- */
+.pill-radio {
+  @apply flex items-center gap-2 px-4 py-2 rounded-full border cursor-pointer transition-all duration-300;
+}
+
+.pill-radio:hover {
+  @apply bg-gray-100;
+}
+
+.pill-radio input[type="radio"] {
+  @apply w-4 h-4;
+}
+
