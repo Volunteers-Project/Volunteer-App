@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-
-
-
 import { prisma } from "@/lib/prisma";
 
-
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const newsId = Number(params.id);
-
   try {
+    const { id } = await context.params;  // ← FIX
+    const newsId = Number(id);
+
     const activities = await prisma.activity.findMany({
       where: { newsId },
       include: {
