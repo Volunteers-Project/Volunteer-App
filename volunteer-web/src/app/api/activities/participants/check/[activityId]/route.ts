@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+
+
 import { cookies } from "next/headers";
 
-import { prisma } from "@root/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 
 export async function GET(req: Request, context: { params: { activityId: string } }) {

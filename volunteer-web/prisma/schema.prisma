@@ -331,3 +331,13 @@ model ActivityParticipantSlot {
 
   @@unique([participantId, timeSlotId])
 }
+
+model ActivityKickLog {
+  id          String   @id @default(uuid())
+  participantId String
+  activityId   String
+  reason       String
+  createdAt    DateTime @default(now())
+
+  @@index([activityId])
+}

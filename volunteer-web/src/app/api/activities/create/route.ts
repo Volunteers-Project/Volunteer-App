@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+
+
+import { prisma } from "@/lib/prisma";
+
 
 // Type for time slot
 interface TimeSlotPayload {

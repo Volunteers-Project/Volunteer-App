@@ -169,7 +169,7 @@ export default function ActivityPage() {
           </button>
         )}
 
-        {isOrganizer && (
+        {/* {isOrganizer && (
           <button
             onClick={() => setActiveTab("edit")}
             className={`px-4 py-2 -mb-px border-b-2 ${
@@ -180,7 +180,7 @@ export default function ActivityPage() {
           >
             Edit Activity
           </button>
-        )}
+        )} */}
       </div>
 
       {/* TAB CONTENT */}

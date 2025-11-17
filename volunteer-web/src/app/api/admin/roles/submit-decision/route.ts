@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { cookies } from "next/headers";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+
 
 export async function POST(req: NextRequest) {
   // 🔥 Get user UUID from cookie

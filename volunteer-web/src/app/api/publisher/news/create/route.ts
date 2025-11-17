@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+
+
 import { createClient } from "@supabase/supabase-js";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 import worker from "pdfjs-dist/legacy/build/pdf.worker.js";
@@ -13,7 +14,8 @@ import { JSDOM } from "jsdom";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+
 
 // SUPABASE SERVICE CLIENT
 const supabase = createClient(

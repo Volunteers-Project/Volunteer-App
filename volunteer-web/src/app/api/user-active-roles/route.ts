@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { cookies } from "next/headers";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+
 
 // Returns only ACTIVE or RENEWABLE roles
 export async function GET(req: Request) {
