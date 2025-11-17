@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-import { prisma } from "@/lib/prisma";
 
 // SUPABASE SERVICE CLIENT
 const supabase = createClient(
@@ -27,18 +26,19 @@ async function toBuffer(input: File | Buffer): Promise<Buffer> {
 }
 
 /* ------------------------------------------------------------
-    MAIN HANDLER
+    MAIN HANDLER — FIXED FOR NEXT.JS 15
 ------------------------------------------------------------- */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
 
-    const title = form.get("title") as string;
+    const title = form.get("title") as string | null;
     let categoryId = Number(form.get("categoryId"));
-
     if (!categoryId || isNaN(categoryId)) categoryId = 1;
 
-    const tags = JSON.parse(form.get("tags") as string);
+    const tagsRaw = form.get("tags") as string | null;
+    const tags = tagsRaw ? JSON.parse(tagsRaw) : [];
+
     const thumbnail = form.get("thumbnail") as File | null;
     const file = form.get("file") as File | null;
 
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // Size limit check
     const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize || thumbnail.size > maxSize) {
       return NextResponse.json(
@@ -57,30 +58,40 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get UUID from cookie
-    const cookie = req.headers.get("cookie") ?? "";
-    const uuid = cookie.match(/user_id=([^;]+)/)?.[1];
+    /* ------------------------------------------------------------
+        USER AUTH — COOKIE READING MADE CONSISTENT
+    ------------------------------------------------------------- */
+    const cookieHeader = req.headers.get("cookie") ?? "";
+    const uuid = cookieHeader.match(/user_id=([^;]+)/)?.[1];
 
     if (!uuid) {
-      return NextResponse.json({ error: "Not logged in" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Not logged in" },
+        { status: 403 }
+      );
     }
 
-    // Check publisher permission
+    /* ------------------------------------------------------------
+        CHECK USER ROLE PERMISSION
+    ------------------------------------------------------------- */
     const hasPublisher = await prisma.userRole.findFirst({
       where: {
         user_uuid: uuid,
-        role_id: 3, // publisher
-        status: 2, // active
+        role_id: 3, // publisher role
+        status: 2,  // active
         active_until: { gt: new Date() }
       },
     });
 
     if (!hasPublisher) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     /* ------------------------------------------------------------
-        UPLOAD TO SUPABASE
+        SUPABASE UPLOAD
     ------------------------------------------------------------- */
     async function uploadToSupabase(path: string, input: File | Buffer) {
       const buffer = await toBuffer(input);
@@ -95,27 +106,26 @@ export async function POST(req: Request) {
     }
 
     /* ------------------------------------------------------------
-        1) UPLOAD THUMBNAIL
+        UPLOAD THUMBNAIL
     ------------------------------------------------------------- */
-    const extThumb = thumbnail.name.split(".").pop();
-    const thumbPath = `thumbnails/${crypto.randomUUID()}.${extThumb}`;
+    const thumbExt = thumbnail.name.split(".").pop();
+    const thumbPath = `thumbnails/${crypto.randomUUID()}.${thumbExt}`;
     const thumbnailUrl = await uploadToSupabase(thumbPath, thumbnail);
 
     /* ------------------------------------------------------------
-        2) UPLOAD MAIN FILE
+        UPLOAD MAIN FILE
     ------------------------------------------------------------- */
-    const fileExt = file.name.split(".").pop()?.toLowerCase();
+    const fileExt = file.name.split(".").pop();
     const filePath = `files/${crypto.randomUUID()}.${fileExt}`;
-    const fileBuffer = await toBuffer(file);
-    const fileUrl = await uploadToSupabase(filePath, fileBuffer);
+    const fileUrl = await uploadToSupabase(filePath, await toBuffer(file));
 
     /* ------------------------------------------------------------
-        3) PREVIEW — now always thumbnail (PDF removed)
+        PREVIEW FILE (ALWAYS THUMBNAIL NOW)
     ------------------------------------------------------------- */
     const previewUrl = thumbnailUrl;
 
     /* ------------------------------------------------------------
-        4) INSERT INTO DATABASE
+        CREATE NEWS RECORD IN DATABASE
     ------------------------------------------------------------- */
     const news = await prisma.news.create({
       data: {
@@ -131,7 +141,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, news });
   } catch (err) {
-    console.error("Create news error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("[CREATE NEWS ERROR]", err);
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
   }
 }
