@@ -1,21 +1,10 @@
 import { NextResponse } from "next/server";
-
-
 import { createClient } from "@supabase/supabase-js";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
-import worker from "pdfjs-dist/legacy/build/pdf.worker.js";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
-
-import { renderAsync } from "docx-preview";
-import puppeteer from "puppeteer";
-import { JSDOM } from "jsdom";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { prisma } from "@/lib/prisma";
-
 
 // SUPABASE SERVICE CLIENT
 const supabase = createClient(
@@ -27,12 +16,8 @@ const supabase = createClient(
     SAFE BUFFER CONVERSION
 ------------------------------------------------------------- */
 async function toBuffer(input: File | Buffer): Promise<Buffer> {
-  // If already a Buffer → return directly
-  if (input instanceof Buffer) {
-    return input;
-  }
+  if (input instanceof Buffer) return input;
 
-  // If it is a File (has arrayBuffer)
   if ("arrayBuffer" in input && typeof input.arrayBuffer === "function") {
     const ab = await input.arrayBuffer();
     return Buffer.from(ab);
@@ -40,7 +25,6 @@ async function toBuffer(input: File | Buffer): Promise<Buffer> {
 
   throw new Error("Invalid input type: expected File or Buffer");
 }
-
 
 /* ------------------------------------------------------------
     MAIN HANDLER
@@ -52,16 +36,12 @@ export async function POST(req: Request) {
     const title = form.get("title") as string;
     let categoryId = Number(form.get("categoryId"));
 
-    // If no category is selected → set default = 1
-    if (!categoryId || isNaN(categoryId)) {
-      categoryId = 1;
-    }
+    if (!categoryId || isNaN(categoryId)) categoryId = 1;
 
     const tags = JSON.parse(form.get("tags") as string);
     const thumbnail = form.get("thumbnail") as File | null;
     const file = form.get("file") as File | null;
 
-    // Required fields
     if (!title || !categoryId || !thumbnail || !file) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -69,7 +49,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // File size limit: 20MB
     const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize || thumbnail.size > maxSize) {
       return NextResponse.json(
@@ -131,21 +110,9 @@ export async function POST(req: Request) {
     const fileUrl = await uploadToSupabase(filePath, fileBuffer);
 
     /* ------------------------------------------------------------
-        3) GENERATE PREVIEW
+        3) PREVIEW — now always thumbnail (PDF removed)
     ------------------------------------------------------------- */
-    let previewUrl: string | null = null;
-
-    try {
-      if (fileExt === "pdf") {
-        previewUrl = await generatePDFPreview(fileBuffer);
-      } else if (fileExt === "docx") {
-        previewUrl = await generateDOCXPreview(fileBuffer);
-      }
-    } catch (err) {
-      console.warn("Preview generation failed:", err);
-    }
-
-    if (!previewUrl) previewUrl = thumbnailUrl;
+    const previewUrl = thumbnailUrl;
 
     /* ------------------------------------------------------------
         4) INSERT INTO DATABASE
@@ -167,73 +134,4 @@ export async function POST(req: Request) {
     console.error("Create news error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-}
-
-/* ------------------------------------------------------------
-    PDF PREVIEW GENERATOR
-------------------------------------------------------------- */
-async function generatePDFPreview(buffer: Buffer): Promise<string> {
-  const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const page = await pdfDoc.getPage(1);
-
-  const viewport = page.getViewport({ scale: 1.5 });
-  const canvasFactory = new pdfjsLib.NodeCanvasFactory();
-  const canvas = canvasFactory.create(viewport.width, viewport.height);
-
-  await page.render({
-    canvasContext: canvas.context,
-    viewport,
-    canvasFactory,
-  }).promise;
-
-  const png = canvas.canvas.toBuffer();
-  const path = `previews/${crypto.randomUUID()}.png`;
-
-  const { error } = await supabase.storage
-    .from("news-files")
-    .upload(path, png, { upsert: true });
-
-  if (error) throw error;
-
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/news-files/${path}`;
-}
-
-/* ------------------------------------------------------------
-    DOCX PREVIEW GENERATOR
-------------------------------------------------------------- */
-async function generateDOCXPreview(buffer: Buffer): Promise<string> {
-  const arrayBuffer = buffer.buffer.slice(
-    buffer.byteOffset,
-    buffer.byteOffset + buffer.byteLength
-  );
-
-  const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
-  const document = dom.window.document;
-  const bodyContainer = document.body;
-
-  // Render DOCX inside virtual DOM
-  await renderAsync(arrayBuffer, bodyContainer);
-
-  const html = document.documentElement.outerHTML;
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
-  });
-
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
-
-  const png = await page.screenshot({ fullPage: true });
-  await browser.close();
-
-  const path = `previews/${crypto.randomUUID()}.png`;
-
-  const { error } = await supabase.storage
-    .from("news-files")
-    .upload(path, png, { upsert: true });
-
-  if (error) throw error;
-
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/news-files/${path}`;
 }
