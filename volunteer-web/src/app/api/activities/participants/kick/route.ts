@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+interface KickBody {
+  participantId: string;
+  activityId: string;
+  reason: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body: KickBody = await req.json();
     const { participantId, activityId, reason } = body;
 
     if (!participantId || !activityId || !reason) {
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Kick participant error:", err);
+    console.error("[KICK PARTICIPANT ERROR]", err);
     return NextResponse.json(
       { error: "Failed to kick participant." },
       { status: 500 }

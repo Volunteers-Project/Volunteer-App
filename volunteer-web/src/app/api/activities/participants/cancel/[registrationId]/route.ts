@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-
-
 import { cookies } from "next/headers";
-
 import { prisma } from "@/lib/prisma";
-
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { registrationId: string } }
+  context: { params: Promise<{ registrationId: string }> }
 ) {
   try {
+    const { registrationId } = await context.params;
+
     const cookieStore = await cookies();
     const userId = cookieStore.get("user_id")?.value;
 
@@ -21,9 +19,9 @@ export async function DELETE(
       );
     }
 
-    // Ensure user owns this registration
+    // Check ownership
     const record = await prisma.activityParticipant.findUnique({
-      where: { id: params.registrationId },
+      where: { id: registrationId },
     });
 
     if (!record) {
@@ -40,14 +38,14 @@ export async function DELETE(
       );
     }
 
-    // Cascade delete will remove all slots
+    // Cascade delete removes slots
     await prisma.activityParticipant.delete({
-      where: { id: params.registrationId },
+      where: { id: registrationId },
     });
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("[DELETE REGISTRATION ERROR]", err);
     return NextResponse.json(
       { error: "Failed to cancel registration" },
       { status: 500 }

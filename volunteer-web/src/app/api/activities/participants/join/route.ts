@@ -1,9 +1,5 @@
-import { NextResponse } from "next/server";
-
-
-
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
 
 interface SlotSelection {
   timeSlotId: string;
@@ -19,7 +15,7 @@ interface JoinBody {
   slotSelections: SlotSelection[];
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body: JoinBody = await req.json();
     const { activityId, userId, slotSelections } = body;

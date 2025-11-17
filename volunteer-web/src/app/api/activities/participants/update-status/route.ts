@@ -1,20 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
+interface UpdateSlotBody {
+  participantSlotId: string;
+  statusCode?: number | null;
+  arrivalTime?: string | null;
+  leaveTime?: string | null;
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body: UpdateSlotBody = await req.json();
 
     const {
       participantSlotId,
       statusCode,
       arrivalTime,
       leaveTime,
-    }: {
-      participantSlotId: string;
-      statusCode?: number | null;
-      arrivalTime?: string | null;
-      leaveTime?: string | null;
     } = body;
 
     if (!participantSlotId) {
@@ -33,9 +35,15 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, updated });
+    return NextResponse.json({
+      success: true,
+      updated,
+    });
   } catch (err) {
-    console.error("Error updating participant slot:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("[UPDATE PARTICIPANT SLOT ERROR]", err);
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
   }
 }
