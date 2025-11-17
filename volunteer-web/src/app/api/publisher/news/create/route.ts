@@ -26,25 +26,22 @@ async function toBuffer(input: File | Buffer): Promise<Buffer> {
 }
 
 /* ------------------------------------------------------------
-    MAIN HANDLER — FIXED FOR NEXT.JS 15
+    MAIN HANDLER (CLEANED, CATEGORY REMOVED)
 ------------------------------------------------------------- */
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
 
     const title = form.get("title") as string | null;
-    let categoryId = Number(form.get("categoryId"));
-    if (!categoryId || isNaN(categoryId)) categoryId = 1;
-
     const tagsRaw = form.get("tags") as string | null;
     const tags = tagsRaw ? JSON.parse(tagsRaw) : [];
 
     const thumbnail = form.get("thumbnail") as File | null;
     const file = form.get("file") as File | null;
 
-    if (!title || !categoryId || !thumbnail || !file) {
+    if (!title || !thumbnail || !file) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: title, thumbnail, file" },
         { status: 400 }
       );
     }
@@ -59,48 +56,44 @@ export async function POST(req: NextRequest) {
     }
 
     /* ------------------------------------------------------------
-        USER AUTH — COOKIE READING MADE CONSISTENT
+        USER AUTH (COOKIE)
     ------------------------------------------------------------- */
     const cookieHeader = req.headers.get("cookie") ?? "";
     const uuid = cookieHeader.match(/user_id=([^;]+)/)?.[1];
 
     if (!uuid) {
-      return NextResponse.json(
-        { error: "Not logged in" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Not logged in" }, { status: 403 });
     }
 
     /* ------------------------------------------------------------
-        CHECK USER ROLE PERMISSION
+        PERMISSION CHECK (Publisher Role)
     ------------------------------------------------------------- */
     const hasPublisher = await prisma.userRole.findFirst({
       where: {
         user_uuid: uuid,
-        role_id: 3, // publisher role
-        status: 2,  // active
+        role_id: 3,         // Publisher
+        status: 2,          // Active
         active_until: { gt: new Date() }
       },
     });
 
     if (!hasPublisher) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden: not a publisher" }, { status: 403 });
     }
 
     /* ------------------------------------------------------------
-        SUPABASE UPLOAD
+        SUPABASE UPLOAD FUNCTION
     ------------------------------------------------------------- */
     async function uploadToSupabase(path: string, input: File | Buffer) {
       const buffer = await toBuffer(input);
-
       const { error } = await supabase.storage
         .from("news-files")
         .upload(path, buffer, { upsert: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Upload Error:", error);
+        throw new Error(`Supabase upload failed: ${error.message}`);
+      }
 
       return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/news-files/${path}`;
     }
@@ -120,31 +113,40 @@ export async function POST(req: NextRequest) {
     const fileUrl = await uploadToSupabase(filePath, await toBuffer(file));
 
     /* ------------------------------------------------------------
-        PREVIEW FILE (ALWAYS THUMBNAIL NOW)
+        PREVIEW = THUMBNAIL
     ------------------------------------------------------------- */
     const previewUrl = thumbnailUrl;
 
     /* ------------------------------------------------------------
-        CREATE NEWS RECORD IN DATABASE
+        SAVE TO DATABASE (NO CATEGORY)
     ------------------------------------------------------------- */
     const news = await prisma.news.create({
       data: {
         title,
-        categoryId,
         tags,
         authorId: uuid,
         thumbnail: thumbnailUrl,
         fileUrl,
-        previewUrl
+        previewUrl,
       },
     });
 
     return NextResponse.json({ success: true, news });
-  } catch (err) {
-    console.error("[CREATE NEWS ERROR]", err);
-    return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
-    );
-  }
+  } catch (err: unknown) {
+  const error = err instanceof Error ? err : new Error("Unknown error");
+
+  console.error("[CREATE NEWS ERROR]:", {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  });
+
+  return NextResponse.json(
+    {
+      error: "Server error",
+      message: error.message,
+    },
+    { status: 500 }
+  );
+}
 }

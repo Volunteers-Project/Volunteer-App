@@ -158,18 +158,19 @@ model News {
   fileUrl     String
   tags        String[]
   previewUrl  String?
-  categoryId  Int
+  categoryId Int?
   authorId    String     @db.Uuid
 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   // Relations
-  category    NewsCategory @relation(fields: [categoryId], references: [id])
+  category    NewsCategory? @relation(fields: [categoryId], references: [id])
   author      User         @relation(fields: [authorId], references: [id])
 
   activities  Activity[]
 }
+
 
 ////////////////////////////////////////////////////
 // ENUMS
